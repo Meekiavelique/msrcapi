@@ -1,0 +1,29 @@
+[project]
+name = "minecraft-source-api"
+version = "1.0.0"
+description = "Blazingly fast API for serving decompiled Minecraft source code"
+requires-python = ">=3.11"
+dependencies = [
+    "blacksheep[full]>=2.0.0",
+    "uvicorn[standard]>=0.27.0",
+    "aiosqlite>=0.19.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "httpx>=0.26.0",
+    "aiofiles>=23.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.12.0",
+    "ruff>=0.1.0",
+]
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "N", "W"]
