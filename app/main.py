@@ -1,4 +1,4 @@
-from blacksheep import Application, json
+from blacksheep import Application, json, Response
 from blacksheep.server.routing import Router
 from blacksheep.server.responses import text
 import time
@@ -123,9 +123,64 @@ minecraft_api_cache_misses {cache.misses}
 
 
 
+@app.router.route("/{path:path}", methods=["OPTIONS"])
+async def options_handler(path: str):
+    return Response(204)
+
+
+
 @app.on_middlewares_configuration
 def configure_middlewares(app: Application):
     from blacksheep import Request
+
+    allowed_origins = settings.cors_allow_origins
+    allow_all_origins = "*" in allowed_origins
+    allowed_methods = ", ".join(settings.cors_allow_methods).encode()
+    allowed_headers = ", ".join(settings.cors_allow_headers).encode()
+    max_age = str(settings.cors_max_age).encode()
+
+    def add_cors_headers(response: Response, origin: bytes) -> None:
+        """Add CORS headers to any response"""
+        response.headers[b"Access-Control-Allow-Origin"] = origin
+        if not allow_all_origins:
+            response.headers[b"Vary"] = b"Origin"
+        response.headers[b"Access-Control-Allow-Methods"] = allowed_methods
+        response.headers[b"Access-Control-Allow-Headers"] = allowed_headers
+        response.headers[b"Access-Control-Expose-Headers"] = allowed_headers
+        response.headers[b"Access-Control-Max-Age"] = max_age
+        if settings.cors_allow_credentials and origin != b"*":
+            response.headers[b"Access-Control-Allow-Credentials"] = b"true"
+
+    async def cors_middleware(request: Request, handler):
+        origin_header = request.get_first_header(b"Origin")
+
+        if allow_all_origins:
+            origin_to_use = origin_header or b"*"
+        elif origin_header:
+            origin_str = origin_header.decode()
+            if origin_str in allowed_origins:
+                origin_to_use = origin_header
+            else:
+                response = Response(403, content=json({"error": "Origin not allowed"}))
+                add_cors_headers(response, b"*")  
+                return response
+        else:
+            origin_to_use = b"*" if allow_all_origins else allowed_origins[0].encode()
+
+        if request.method == b"OPTIONS":
+            response = Response(204)
+            add_cors_headers(response, origin_to_use)
+            return response
+        try:
+            response = await handler(request)
+        except Exception as e:
+            print(f"Error in handler: {e}")
+            response = Response(500, content=json({"error": "Internal server error"}))
+
+        add_cors_headers(response, origin_to_use)
+        return response
+
+    app.middlewares.append(cors_middleware)
 
     async def timing_middleware(request: Request, handler):
         start = time.perf_counter()

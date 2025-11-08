@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     regenerate_variables: bool = True
     threads: int = 8
 
+    cors_allow_origins: list[str] = ["*"]
+    cors_allow_methods: list[str] = ["GET", "POST", "OPTIONS"]
+    cors_allow_headers: list[str] = ["Authorization", "Content-Type", "Accept", "X-Requested-With"]
+    cors_allow_credentials: bool = False
+    cors_max_age: int = 3600
+
     @property
     def minecraft_manifest_url(self) -> str:
         return "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
